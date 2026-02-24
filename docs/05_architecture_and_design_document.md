@@ -61,7 +61,7 @@
 
 #### L1 - 系統情境圖 (System Context Diagram)
 
-描述本系統與外部使用者及外部系統的互動邊界。本平台服務三類使用者：一般用戶（透過 LINE）、技師（透過 Web App）、管理員（透過管理後台），並與 LINE Messaging API 和 OpenAI API 兩個外部系統整合。
+描述本系統與外部使用者及外部系統的互動邊界。本平台服務三類使用者：一般用戶（透過 LINE）、技師（透過 Web App）、管理員（透過管理後台），並與 LINE Messaging API 和 Google AI API 兩個外部系統整合。
 
 ```mermaid
 graph TB
@@ -77,7 +77,7 @@ graph TB
 
     subgraph "外部系統 (External Systems)"
         LINE["LINE Messaging API<br/>---<br/>訊息收發、Rich Menu<br/>Flex Message 推送"]
-        OPENAI["OpenAI GPT-4o API<br/>---<br/>自然語言理解、意圖識別<br/>對話生成、SOP 草稿生成"]
+        GOOGLE_AI["Google Gemini 3 Pro API<br/>---<br/>自然語言理解、意圖識別<br/>對話生成、SOP 草稿生成"]
     end
 
     LU -- "LINE 訊息<br/>(文字/圖片/位置)" --> SYS
@@ -87,8 +87,8 @@ graph TB
     AU -- "HTTPS<br/>(Web Admin Panel)" --> SYS
     SYS -- "Webhook Events" --> LINE
     LINE -- "Webhook Callback" --> SYS
-    SYS -- "LLM API Calls<br/>(Chat Completion)" --> OPENAI
-    OPENAI -- "AI Response<br/>(JSON)" --> SYS
+    SYS -- "LLM API Calls<br/>(Chat Completion)" --> GOOGLE_AI
+    GOOGLE_AI -- "AI Response<br/>(JSON)" --> SYS
 ```
 
 #### L2 - 容器圖 (Container Diagram)
@@ -105,7 +105,7 @@ graph TB
 
     subgraph "外部系統"
         LINE_API["LINE Messaging API"]
-        OPENAI_API["OpenAI GPT-4o API"]
+        GOOGLE_AI_API["Google Gemini 3 Pro API"]
     end
 
     subgraph "Platform Containers"
@@ -136,7 +136,7 @@ graph TB
     AU -- "HTTPS<br/>(Browser)" --> ADMIN
     ADMIN -- "API Calls<br/>(HTTPS)" --> API
 
-    API -- "LangChain<br/>(Chat Completion / Embedding)" --> OPENAI_API
+    API -- "LangChain<br/>(Chat Completion / Embedding)" --> GOOGLE_AI_API
     API -- "SQL / pgvector<br/>(SQLAlchemy Async)" --> PG
     API -- "Cache R/W<br/>(aioredis)" --> REDIS
 ```
@@ -175,9 +175,9 @@ graph TB
 
         subgraph "Infrastructure Layer (基礎設施層)"
             REPO["Repositories<br/>---<br/>SQLAlchemy Async Repos<br/>pgvector Search Repos<br/>Redis Cache Repos"]
-            LLM["LLM Gateway<br/>---<br/>LangChain Wrapper<br/>OpenAI API Client<br/>Prompt Template Manager<br/>Token Usage Tracker"]
+            LLM["LLM Gateway<br/>---<br/>LangChain Wrapper<br/>Google AI API Client<br/>Prompt Template Manager<br/>Token Usage Tracker"]
             LINEsdk["LINE SDK Adapter<br/>---<br/>line-bot-sdk-python<br/>Message Builder<br/>Flex Message Templates"]
-            EMB["Embedding Service<br/>---<br/>text-embedding-3-small<br/>Batch Embedding Pipeline<br/>Vector Normalization"]
+            EMB["Embedding Service<br/>---<br/>text-embedding-004<br/>Batch Embedding Pipeline<br/>Vector Normalization"]
         end
     end
 
@@ -219,7 +219,7 @@ graph TB
     ACC --> REPO
 
     LINEsdk --> LINEEXT["LINE Messaging API"]
-    LLM --> OAIEXT["OpenAI API"]
+    LLM --> GAIEXT["Google AI API"]
     REPO --> PGEXT["PostgreSQL + pgvector"]
     REPO --> RDEXT["Redis"]
 ```
@@ -309,7 +309,7 @@ graph TB
         subgraph "Infrastructure Layer (基礎設施層) - 最外層"
             CTRL["Web Controllers<br/>LINE Webhook Handler<br/>REST API Routes"]
             REPOIMPL["Repository Implementations<br/>SQLAlchemy Models & Repos<br/>pgvector Search Implementation"]
-            EXTAPI["External API Clients<br/>LangChain/OpenAI Client<br/>LINE SDK Adapter"]
+            EXTAPI["External API Clients<br/>LangChain/Google AI Client<br/>LINE SDK Adapter"]
             CACHE["Cache Implementation<br/>Redis Client"]
         end
 
@@ -358,8 +358,8 @@ graph TB
 | **後端框架** | FastAPI | 0.110+ | REST API / WebSocket / Webhook |
 | **ASGI Server** | Uvicorn | 0.29+ | 高效能非同步 HTTP Server |
 | **LLM 框架** | LangChain | 0.2+ | LLM 調用抽象、Chain 編排、Prompt 管理 |
-| **LLM 模型** | OpenAI GPT-4o | - | 意圖識別、對話生成、SOP 草稿 |
-| **Embedding 模型** | OpenAI text-embedding-3-small | - | 文本向量化 (1536 維) |
+| **LLM 模型** | Google Gemini 3 Pro | - | 意圖識別、對話生成、SOP 草稿 |
+| **Embedding 模型** | Google text-embedding-004 | - | 文本向量化 (768 維) |
 | **關聯式資料庫** | PostgreSQL | 16 | 主要資料儲存 |
 | **向量擴展** | pgvector | 0.7+ | 向量索引與相似度搜尋 |
 | **快取** | Redis | 7+ | Session 快取、Rate Limiting |
@@ -383,12 +383,12 @@ graph TB
 | :--- | :--- | :--- | :--- |
 | ADR-001 | 選用 FastAPI 作為後端框架 | Accepted | 全系統 |
 | ADR-002 | 選用 PostgreSQL + pgvector 作為資料庫與向量儲存 | Accepted | 數據層 |
-| ADR-003 | 選用 LangChain + OpenAI GPT-4o 作為 LLM 方案 | Accepted | AI 元件 |
+| ADR-003 | 選用 LangChain + Google Gemini 3 Pro 作為 LLM 方案 | Accepted | AI 元件 |
 | ADR-004 | V1.0 採用 Modular Monolith 架構 | Accepted | 全系統 |
 | ADR-005 | 選用 Redis 作為 Session 與快取方案 | Accepted | 數據層 |
 | ADR-006 | Admin UI V1.0 使用 Jinja2 + HTMX，V2.0 遷移至 Next.js | Accepted | 前端 |
 | ADR-007 | 採用 Docker Compose 作為部署策略 | Accepted | 基礎設施 |
-| ADR-008 | Embedding 模型選用 text-embedding-3-small | Accepted | AI 元件 |
+| ADR-008 | Embedding 模型選用 text-embedding-004 | Accepted | AI 元件 |
 
 ---
 
@@ -404,7 +404,7 @@ graph TB
 | FR-102 | 多輪對話管理 | 維護對話上下文，支援多輪問診流程，對話超時自動清理 |
 | FR-103 | ProblemCard 引擎 | AI 輔助從對話中提取結構化欄位，建立問題卡，識別缺失欄位並追問 |
 | FR-104 | 三層解決機制 (L1) | 知識庫精確匹配：向量搜尋 + 關鍵字匹配，命中閾值 >= 0.85 |
-| FR-105 | 三層解決機制 (L2) | AI 推理生成：基於 ProblemCard + 手冊段落 + 歷史案例，使用 GPT-4o 生成解決建議 |
+| FR-105 | 三層解決機制 (L2) | AI 推理生成：基於 ProblemCard + 手冊段落 + 歷史案例，使用 Gemini 3 Pro 生成解決建議 |
 | FR-106 | 三層解決機制 (L3) | 轉人工/建立工單：AI 無法解決時，收集客戶資訊準備轉接或建立派工需求 |
 | FR-107 | 知識庫管理 | CaseEntry CRUD、PDF 手冊上傳與自動分段、Embedding 批次計算與更新 |
 | FR-108 | SOP 自動生成 | 從成功對話中萃取解決模式，自動草擬 SOP，管理員審核後上架 |
@@ -507,7 +507,7 @@ graph TB
 
     subgraph "External Services"
         LINE_MsgAPI["LINE Messaging API"]
-        OpenAI_API["OpenAI API<br/>(GPT-4o + Embeddings)"]
+        Google_AI_API["Google AI API<br/>(Gemini 3 Pro + Embeddings)"]
     end
 
     subgraph "Application Core (FastAPI)"
@@ -564,7 +564,7 @@ graph TB
     PCARD --> LLM_GW
     SOP --> LLM_GW
     KB --> LLM_GW
-    LLM_GW --> OpenAI_API
+    LLM_GW --> Google_AI_API
 
     REST_API --> KB
     REST_API --> DISPATCH
@@ -592,10 +592,10 @@ graph TB
 | **LINE Webhook Handler** | 接收 LINE 平台的 Webhook 回調事件，驗證 HMAC-SHA256 簽章，解析事件類型（Message, Postback, Follow），路由至對應處理器 | FastAPI, line-bot-sdk | Conversation Manager | V1.0 |
 | **Conversation Manager** | 管理對話狀態機（Idle -> Collecting -> Resolving -> Resolved/Escalated），維護多輪對話上下文，Session 超時處理（30 分鐘），訊息收發協調 | Python, Redis | ProblemCard Engine, Three-Layer Resolver, LINE SDK Adapter, Redis | V1.0 |
 | **ProblemCard Engine** | 從對話中提取結構化問題描述，AI 輔助欄位推斷（從自然語言中提取 model/location/symptoms），識別缺失欄位並產生追問訊息 | Python, LangChain | LLM Gateway, PostgreSQL | V1.0 |
-| **Three-Layer Resolver** | 依序執行三層解決機制：L1 向量搜尋 + 關鍵字匹配 -> L2 GPT-4o 推理（RAG）-> L3 轉人工/建單。記錄解決路徑供 SOP 生成使用 | Python, LangChain | Knowledge Base Manager, LLM Gateway, Dispatch Engine (V2.0) | V1.0 |
+| **Three-Layer Resolver** | 依序執行三層解決機制：L1 向量搜尋 + 關鍵字匹配 -> L2 Gemini 3 Pro 推理（RAG）-> L3 轉人工/建單。記錄解決路徑供 SOP 生成使用 | Python, LangChain | Knowledge Base Manager, LLM Gateway, Dispatch Engine (V2.0) | V1.0 |
 | **Knowledge Base Manager** | CaseEntry 與 ManualChunk 的 CRUD 操作，PDF 上傳後自動分段（chunk），Embedding 批次計算與增量更新，向量搜尋介面 | Python, PyMuPDF, pgvector | LLM Gateway (Embedding), PostgreSQL + pgvector | V1.0 |
-| **SOP Generator** | 監聽「問題成功解決」事件，分析對話記錄與解決路徑，使用 GPT-4o 草擬 SOP，提交至管理員審核佇列 | Python, LangChain | LLM Gateway, PostgreSQL | V1.0 |
-| **LLM Gateway** | LangChain 封裝的 LLM 呼叫統一入口，管理 Prompt Templates，追蹤 Token 使用量，實現 retry/fallback 策略，回應品質過濾 | LangChain, OpenAI SDK | OpenAI API | V1.0 |
+| **SOP Generator** | 監聽「問題成功解決」事件，分析對話記錄與解決路徑，使用 Gemini 3 Pro 草擬 SOP，提交至管理員審核佇列 | Python, LangChain | LLM Gateway, PostgreSQL | V1.0 |
+| **LLM Gateway** | LangChain 封裝的 LLM 呼叫統一入口，管理 Prompt Templates，追蹤 Token 使用量，實現 retry/fallback 策略，回應品質過濾 | LangChain, Google AI SDK | Google AI API | V1.0 |
 | **LINE SDK Adapter** | 封裝 line-bot-sdk-python，提供 Reply Message, Push Message, Flex Message Builder 等便捷介面 | line-bot-sdk-python | LINE Messaging API | V1.0 |
 | **Auth Module** | JWT Token 發行與驗證，Admin / Technician 角色區分，API 存取控制 | FastAPI Security, JWT | PostgreSQL, Redis | V1.0 |
 | **Admin Panel** | V1.0: Jinja2 + HTMX 的伺服器端渲染管理介面。V2.0: 遷移至 Next.js SPA | V1.0: Jinja2/HTMX, V2.0: Next.js | REST API | V1.0 / V2.0 |
@@ -618,7 +618,7 @@ graph TB
    - 無 Session -> 建立新 Conversation，狀態設為 Collecting
    - 有 Session -> 載入既有對話上下文
 5. Conversation Manager 將用戶訊息傳給 ProblemCard Engine
-6. ProblemCard Engine 呼叫 LLM Gateway -> GPT-4o，從訊息中提取：
+6. ProblemCard Engine 呼叫 LLM Gateway -> Gemini 3 Pro，從訊息中提取：
    - symptoms: "門鎖打不開"
    - intent: "報修"
    - 缺失欄位：model, location, door_status, network
@@ -632,7 +632,7 @@ graph TB
     - 命中 -> 回傳解決方案，Conversation 狀態 -> Resolved
     - 未命中 -> 進入 L2
 12. L2: Three-Layer Resolver 組裝 RAG 上下文（ProblemCard + 相關 ManualChunk + 近似 CaseEntry），
-    呼叫 LLM Gateway -> GPT-4o 生成解決建議
+    呼叫 LLM Gateway -> Gemini 3 Pro 生成解決建議
     - 生成品質通過過濾 -> 回傳解決方案，Conversation 狀態 -> Resolved
     - 品質不足 -> 進入 L3
 13. L3: 收集客戶聯絡資訊，提示將轉接人工客服或安排技師到場
@@ -651,7 +651,7 @@ graph TB
    a. PDF 解析：使用 PyMuPDF 提取文本與頁碼
    b. 文本分段：以 500 tokens 為窗口、100 tokens 重疊進行 chunk 分割
    c. 元資料標注：每個 chunk 關聯來源 PDF、頁碼、章節標題
-   d. Embedding 計算：呼叫 LLM Gateway -> text-embedding-3-small 批次計算
+   d. Embedding 計算：呼叫 LLM Gateway -> text-embedding-004 批次計算
    e. 入庫：ManualChunk 記錄（含 embedding vector）寫入 PostgreSQL + pgvector
    f. 索引更新：pgvector HNSW 索引自動更新
 6. Knowledge Base Manager 回傳處理結果（成功/失敗 chunk 數量）
@@ -688,7 +688,7 @@ graph TB
    a. 讀取完整 Conversation messages
    b. 讀取 ProblemCard 內容
    c. 識別解決路徑（L1 命中的 CaseEntry 或 L2 生成的方案）
-3. SOP Generator 呼叫 LLM Gateway -> GPT-4o，使用專用 Prompt Template：
+3. SOP Generator 呼叫 LLM Gateway -> Gemini 3 Pro，使用專用 Prompt Template：
    - 輸入：ProblemCard + 解決步驟 + 用戶反饋
    - 輸出：結構化 SOP（適用條件、步驟清單、注意事項）
 4. SOPDraft 寫入 PostgreSQL，狀態設為 PendingReview
@@ -719,9 +719,9 @@ graph TB
 | 分類 | 選用技術 | 選擇理由 (Justification) | 考量的備選方案 | 風險/成熟度 | 相關 ADR |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **後端框架** | Python 3.11+ / FastAPI | 1. 原生 async/await 支援，適合 I/O 密集的 LLM 呼叫場景<br/>2. 自動 OpenAPI 文檔生成，降低 API 文檔維護成本<br/>3. Pydantic 整合提供強型別驗證<br/>4. Python 生態在 AI/ML 領域最為豐富 | **Django REST Framework**: 功能全面但較重，async 支援尚不成熟<br/>**Node.js / Express**: 非同步效能佳，但 Python 在 AI 生態更強<br/>**Go / Gin**: 高效能，但 LLM 庫生態不如 Python | 成熟 (Mature) | ADR-001 |
-| **LLM 框架** | LangChain 0.2+ | 1. 統一抽象層，便於切換 LLM Provider<br/>2. 內建 Chain/Agent 編排能力<br/>3. RAG pipeline 原生支援<br/>4. Prompt Template 管理<br/>5. 活躍社群與豐富文檔 | **直接使用 OpenAI SDK**: 更輕量，但缺乏抽象層與 RAG 支援<br/>**LlamaIndex**: RAG 專精，但通用性不如 LangChain<br/>**Semantic Kernel**: 微軟出品，Python 支援較弱 | 成熟但迭代快 | ADR-003 |
-| **LLM 模型** | OpenAI GPT-4o | 1. 目前最佳的多模態理解能力（可處理用戶上傳的門鎖照片）<br/>2. 中文對話品質優異<br/>3. Function Calling 支援結構化輸出<br/>4. 穩定的 API 可用性 | **Claude 3.5 Sonnet**: 同等級能力，但中文場景資料較少<br/>**Gemini 1.5 Pro**: 長上下文優勢，但 API 穩定度待觀察<br/>**本地部署 LLM**: 延遲低但硬體成本高，品質不及 GPT-4o | 成熟 (Mature) | ADR-003 |
-| **Embedding 模型** | text-embedding-3-small | 1. 1536 維向量，平衡精度與成本<br/>2. 每百萬 Token 成本僅 $0.02<br/>3. 與 GPT-4o 同一供應商，降低整合複雜度<br/>4. 支援 dimensions 參數可降維 | **text-embedding-3-large**: 更高精度但成本 6 倍<br/>**Cohere Embed**: 多語言能力強，但增加供應商依賴<br/>**本地 BERT**: 零成本但精度差且需維護 GPU | 成熟 (Mature) | ADR-008 |
+| **LLM 框架** | LangChain 0.2+ | 1. 統一抽象層，便於切換 LLM Provider<br/>2. 內建 Chain/Agent 編排能力<br/>3. RAG pipeline 原生支援<br/>4. Prompt Template 管理<br/>5. 活躍社群與豐富文檔 | **直接使用 Google AI SDK**: 更輕量，但缺乏抽象層與 RAG 支援<br/>**LlamaIndex**: RAG 專精，但通用性不如 LangChain<br/>**Semantic Kernel**: 微軟出品，Python 支援較弱 | 成熟但迭代快 | ADR-003 |
+| **LLM 模型** | Google Gemini 3 Pro | 1. 目前最佳的多模態理解能力（可處理用戶上傳的門鎖照片）<br/>2. 中文對話品質優異<br/>3. Function Calling 支援結構化輸出<br/>4. 穩定的 API 可用性 | **Claude 3.5 Sonnet**: 同等級能力，但中文場景資料較少<br/>**OpenAI GPT-4o**: 同等級能力，成熟穩定<br/>**本地部署 LLM**: 延遲低但硬體成本高，品質不及 Gemini 3 Pro | 成熟 (Mature) | ADR-003 |
+| **Embedding 模型** | text-embedding-004 | 1. 768 維向量，平衡精度與成本<br/>2. 與 Gemini 3 Pro 同一供應商，降低整合複雜度<br/>3. 支援 dimensions 參數可降維<br/>4. 多語言支援優異 | **OpenAI text-embedding-3-small**: 1536 維，精度高但增加供應商依賴<br/>**Cohere Embed**: 多語言能力強，但增加供應商依賴<br/>**本地 BERT**: 零成本但精度差且需維護 GPU | 成熟 (Mature) | ADR-008 |
 | **資料庫** | PostgreSQL 16 + pgvector | 1. 單一資料庫同時提供關聯式與向量儲存，架構最簡<br/>2. pgvector 支援 HNSW 索引，查詢效能滿足需求<br/>3. 團隊熟悉 PostgreSQL<br/>4. 成熟的備份、複製、監控生態 | **PostgreSQL + Pinecone**: 向量搜尋更專業，但增加基礎設施與成本<br/>**PostgreSQL + Milvus**: 自建向量 DB，運維複雜度高<br/>**MongoDB + Atlas Vector**: 文件型 DB，但本專案需要強事務保證 | 成熟 (Mature) | ADR-002 |
 | **快取** | Redis 7+ | 1. 對話 Session 暫存（TTL 30 分鐘）<br/>2. Rate Limiting（LINE Webhook 防洪）<br/>3. 極低延遲（< 1ms）<br/>4. 成熟穩定，運維成本低 | **Memcached**: 更簡單但功能不足（無 TTL 精細控制）<br/>**Application Memory Cache**: 不支援多 Worker 共享 | 成熟 (Mature) | ADR-005 |
 | **前端 (V2.0)** | Next.js 14+ / TypeScript | 1. React 生態系最成熟的全端框架<br/>2. SSR/SSG 提升首屏載入速度<br/>3. TypeScript 型別安全<br/>4. App Router 簡化路由管理 | **Nuxt.js (Vue)**: 同類框架，但 React 生態更大<br/>**SvelteKit**: 更輕量但生態較小<br/>**純 React SPA**: 無 SSR 支援，SEO 與首屏效能較差 | 成熟 (Mature) | ADR-006 |
@@ -967,7 +967,7 @@ graph LR
         CM["Conversation Manager<br/>Load/Create Session"]
         PCE["ProblemCard Engine<br/>Extract Fields (LLM)"]
         L1["L1: Vector Search<br/>(pgvector cosine similarity)"]
-        L2["L2: AI Reasoning<br/>(RAG - GPT-4o)"]
+        L2["L2: AI Reasoning<br/>(RAG - Gemini 3 Pro)"]
         L3["L3: Escalation<br/>(Human / WorkOrder)"]
     end
 
@@ -1007,7 +1007,7 @@ graph LR
 | 場景 | 一致性需求 | 策略 | 說明 |
 | :--- | :--- | :--- | :--- |
 | **Conversation + ProblemCard 建立** | 強一致性 | PostgreSQL Transaction | 對話與問題卡必須原子性寫入，使用 SQLAlchemy 的 Session Transaction |
-| **CaseEntry 更新 + Embedding 計算** | 最終一致性 | 非同步任務 | Embedding 計算是 I/O 密集操作（呼叫 OpenAI API），允許短暫延遲。先寫入 CaseEntry，再異步計算 Embedding 並回寫 |
+| **CaseEntry 更新 + Embedding 計算** | 最終一致性 | 非同步任務 | Embedding 計算是 I/O 密集操作（呼叫 Google AI API），允許短暫延遲。先寫入 CaseEntry，再異步計算 Embedding 並回寫 |
 | **WorkOrder 建立 + 技師通知** | 最終一致性 | 事件驅動 | 工單寫入 DB 成功後發布 Domain Event，通知模組非同步推送 |
 | **WorkOrder 完成 + Invoice 建立** | 強一致性 | PostgreSQL Transaction | 服務完成確認與帳務記錄必須原子性寫入 |
 | **Session Cache (Redis) + DB** | 最終一致性 | Cache-Aside Pattern | Redis 作為快取層，DB 為最終事實來源。Session 過期或丟失時從 DB 重建 |
@@ -1025,7 +1025,7 @@ graph LR
 
 | 參數 | 值 | 說明 |
 | :--- | :--- | :--- |
-| **向量維度** | 1536 | text-embedding-3-small 輸出維度 |
+| **向量維度** | 768 | text-embedding-004 輸出維度 |
 | **索引類型** | HNSW | 查詢效能優於 IVFFlat，無需訓練，適合增量更新 |
 | **距離函數** | cosine | 語義相似度搜尋的標準選擇 |
 | **HNSW m** | 16 | 每層最大連接數，平衡精度與建索引速度 |
@@ -1073,7 +1073,7 @@ L1 解決機制的向量搜尋流程：
 | ManualChunk 數量 | 5,000 - 20,000 筆 | 取決於上傳的 PDF 手冊數量 |
 | 向量索引記憶體 | ~100 MB | 每個 1536 維 float32 向量約 6KB，20K 筆約 120MB |
 | 單次向量搜尋延遲 | < 10ms | HNSW 在此規模下查詢極快 |
-| Embedding 計算延遲 | ~200ms / 次 | OpenAI API 呼叫（含網路） |
+| Embedding 計算延遲 | ~200ms / 次 | Google AI API 呼叫（含網路） |
 
 ---
 
@@ -1115,7 +1115,7 @@ graph TB
     subgraph "External"
         INTERNET["Internet<br/>(LINE Users / Admins / Technicians)"]
         LINE_SRV["LINE Platform"]
-        OPENAI_SRV["OpenAI API"]
+        GOOGLE_AI_SRV["Google AI API"]
     end
 
     INTERNET -- "HTTPS :443" --> NGINX
@@ -1128,8 +1128,8 @@ graph TB
     API2 -- "SQL :5432" --> PG
     API1 -- "Cache :6379" --> RD
     API2 -- "Cache :6379" --> RD
-    API1 -- "HTTPS" --> OPENAI_SRV
-    API2 -- "HTTPS" --> OPENAI_SRV
+    API1 -- "HTTPS" --> GOOGLE_AI_SRV
+    API2 -- "HTTPS" --> GOOGLE_AI_SRV
     API1 -- "HTTPS" --> LINE_SRV
     BACKUP -- "pg_dump :5432" --> PG
 ```
@@ -1139,7 +1139,7 @@ graph TB
 | 服務名稱 | Image | 端口 | 環境變數 | Volume | 備註 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `nginx` | nginx:alpine | 80, 443 | - | `./nginx/conf.d`, `./certs` | SSL 終止、反向代理 |
-| `api` | 自建 Dockerfile | 8000 (internal) | `DATABASE_URL`, `REDIS_URL`, `OPENAI_API_KEY`, `LINE_CHANNEL_SECRET`, `LINE_CHANNEL_ACCESS_TOKEN`, `JWT_SECRET` | `./uploads` | 可用 `--scale api=2` 水平擴展 |
+| `api` | 自建 Dockerfile | 8000 (internal) | `DATABASE_URL`, `REDIS_URL`, `GOOGLE_API_KEY`, `LINE_CHANNEL_SECRET`, `LINE_CHANNEL_ACCESS_TOKEN`, `JWT_SECRET` | `./uploads` | 可用 `--scale api=2` 水平擴展 |
 | `web` (V2.0) | 自建 Dockerfile | 3000 (internal) | `NEXT_PUBLIC_API_URL` | - | Next.js SSR |
 | `postgres` | postgres:16-alpine | 5432 (internal) | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | `pg_data` | 啟用 pgvector extension |
 | `redis` | redis:7-alpine | 6379 (internal) | - | `redis_data` | 持久化 appendonly |
@@ -1198,15 +1198,15 @@ graph LR
 
 | 環境 | 用途 | 基礎設施 | 資料 | 外部服務 |
 | :--- | :--- | :--- | :--- | :--- |
-| **Development** | 本地開發與除錯 | Docker Compose (local) | SQLite / PostgreSQL (local)，Mock 資料 | LINE Bot: 使用 ngrok 暫時隧道。OpenAI: 開發帳號（設定用量上限） |
-| **Staging** | 整合測試、UAT 驗收 | Docker Compose (VPS) | PostgreSQL (staging)，匿名化生產資料副本 | LINE Bot: 獨立的 Staging Channel。OpenAI: 開發帳號 |
-| **Production** | 正式運行環境 | Docker Compose (VPS/Cloud) | PostgreSQL (production)，每日備份 | LINE Bot: 正式 Channel。OpenAI: 正式帳號 |
+| **Development** | 本地開發與除錯 | Docker Compose (local) | SQLite / PostgreSQL (local)，Mock 資料 | LINE Bot: 使用 ngrok 暫時隧道。Google AI: 開發帳號（設定用量上限） |
+| **Staging** | 整合測試、UAT 驗收 | Docker Compose (VPS) | PostgreSQL (staging)，匿名化生產資料副本 | LINE Bot: 獨立的 Staging Channel。Google AI: 開發帳號 |
+| **Production** | 正式運行環境 | Docker Compose (VPS/Cloud) | PostgreSQL (production)，每日備份 | LINE Bot: 正式 Channel。Google AI: 正式帳號 |
 
 **環境隔離原則：**
 - 每個環境使用獨立的 `.env` 檔案，絕不共享密鑰
 - Staging 與 Production 使用獨立的 LINE Channel
 - 生產 API Key 僅存在於生產環境的密鑰管理中
-- 開發環境使用 OpenAI 帳號的用量上限 (usage cap) 防止誤用
+- 開發環境使用 Google AI 帳號的用量上限 (usage cap) 防止誤用
 
 ---
 
@@ -1286,7 +1286,7 @@ graph LR
 | **LINE Webhook 偽造** | 攻擊者偽造 LINE Webhook 請求 | 高 | 1. 每次 Webhook 請求驗證 HMAC-SHA256 簽章<br/>2. 拒絕簽章不匹配的請求<br/>3. Rate Limiting（Nginx 層） |
 | **API 未授權存取** | 未認證用戶存取管理 API 或技師 API | 高 | 1. JWT Token 認證<br/>2. Role-Based Access Control (RBAC)<br/>3. Token 過期時間：Admin 4h / Technician 8h |
 | **SQL Injection** | 惡意輸入導致 SQL 注入 | 高 | 1. SQLAlchemy ORM 參數化查詢（禁止原生 SQL 拼接）<br/>2. 輸入驗證（Pydantic schema）<br/>3. 資料庫帳號最小權限原則 |
-| **API Key 洩露** | OpenAI / LINE API Key 被洩露 | 高 | 1. 環境變數存放，不提交至版本控制<br/>2. `.env` 在 `.gitignore` 中<br/>3. 定期輪替 Key<br/>4. 設定 OpenAI 用量上限 |
+| **API Key 洩露** | Google AI / LINE API Key 被洩露 | 高 | 1. 環境變數存放，不提交至版本控制<br/>2. `.env` 在 `.gitignore` 中<br/>3. 定期輪替 Key<br/>4. 設定 Google AI 用量上限 |
 | **DDoS / 濫用** | 惡意大量請求導致系統癱瘓 | 中 | 1. Nginx Rate Limiting（IP 級別）<br/>2. Redis 實現 API Rate Limiting（用戶級別）<br/>3. LINE Webhook 頻率監控 |
 | **資料竊取** | 資料庫或備份檔案被盜取 | 中 | 1. 資料庫僅在 Docker 內部網路暴露<br/>2. 備份檔案加密<br/>3. SSL/TLS 傳輸加密<br/>4. VPS 防火牆只開放 80/443 |
 
@@ -1318,7 +1318,7 @@ graph LR
 
 | 密鑰 | 儲存方式 | 存取方式 | 輪替策略 |
 | :--- | :--- | :--- | :--- |
-| `OPENAI_API_KEY` | `.env` 檔案（不入版本控制） | 環境變數 | 每季度輪替 |
+| `GOOGLE_API_KEY` | `.env` 檔案（不入版本控制） | 環境變數 | 每季度輪替 |
 | `LINE_CHANNEL_SECRET` | `.env` 檔案 | 環境變數 | LINE 後台設定，按需輪替 |
 | `LINE_CHANNEL_ACCESS_TOKEN` | `.env` 檔案 | 環境變數 | LINE 後台設定，按需輪替 |
 | `JWT_SECRET` | `.env` 檔案 | 環境變數 | 每季度輪替 |
@@ -1331,9 +1331,9 @@ graph LR
 
 | 風險類別 | 風險描述 | 可能性 | 影響程度 | 緩解策略 |
 | :--- | :--- | :--- | :--- | :--- |
-| **AI 品質** | GPT-4o 對特定品牌/型號的電子鎖問題診斷不準確，低於 80% 目標 | 中 | 高 | 1. 建立 50 題標準測試集，持續追蹤準確率<br/>2. 持續豐富知識庫（案例 + 手冊），提升 L1 命中率<br/>3. Prompt Engineering 迭代優化<br/>4. SOP 自演化機制持續改善知識品質 |
-| **LLM API 依賴** | OpenAI API 故障或回應延遲過高，導致系統功能降級 | 低 | 高 | 1. LangChain 抽象層允許快速切換 Provider（如 Azure OpenAI）<br/>2. L1（知識庫搜尋）不依賴 LLM API，可獨立運作<br/>3. 設定 timeout (30s) + retry (3 次 exponential backoff)<br/>4. 降級策略：LLM 不可用時回退至 L1 + L3 |
-| **LLM 成本** | 用戶量增長導致 OpenAI API 費用超出預算 | 中 | 中 | 1. 使用較便宜的 text-embedding-3-small（$0.02/M tokens）<br/>2. L1 命中率越高，L2 LLM 呼叫越少<br/>3. Redis 快取相同問題的回覆（TTL 24h）<br/>4. 監控 Token 使用量，設定每日/每月告警閾值 |
+| **AI 品質** | Gemini 3 Pro 對特定品牌/型號的電子鎖問題診斷不準確，低於 80% 目標 | 中 | 高 | 1. 建立 50 題標準測試集，持續追蹤準確率<br/>2. 持續豐富知識庫（案例 + 手冊），提升 L1 命中率<br/>3. Prompt Engineering 迭代優化<br/>4. SOP 自演化機制持續改善知識品質 |
+| **LLM API 依賴** | Google AI API 故障或回應延遲過高，導致系統功能降級 | 低 | 高 | 1. LangChain 抽象層允許快速切換 Provider（如 OpenAI）<br/>2. L1（知識庫搜尋）不依賴 LLM API，可獨立運作<br/>3. 設定 timeout (30s) + retry (3 次 exponential backoff)<br/>4. 降級策略：LLM 不可用時回退至 L1 + L3 |
+| **LLM 成本** | 用戶量增長導致 Google AI API 費用超出預算 | 中 | 中 | 1. 使用較便宜的 text-embedding-004<br/>2. L1 命中率越高，L2 LLM 呼叫越少<br/>3. Redis 快取相同問題的回覆（TTL 24h）<br/>4. 監控 Token 使用量，設定每日/每月告警閾值 |
 | **Prompt Injection** | 惡意用戶注入指令導致 AI 產生不當回應 | 中 | 高 | 1. System Prompt 硬化（角色固定、範圍限制）<br/>2. 輸出過濾（敏感詞檢測、格式驗證）<br/>3. 輸入長度限制<br/>4. 定期紅隊測試 |
 | **資料安全** | 資料庫洩露或備份檔案被盜 | 低 | 高 | 1. 資料庫不暴露外部端口<br/>2. 備份加密<br/>3. VPS 防火牆嚴格配置<br/>4. 定期安全審計 |
 | **V1 -> V2 升級風險** | V2.0 模組（Dispatch/Accounting）與 V1.0 核心模組整合時產生衝突 | 中 | 中 | 1. Clean Architecture 確保模組間依賴透過介面抽象<br/>2. 限界上下文邊界清晰<br/>3. V2.0 模組作為新 package 加入，不修改 V1.0 核心程式碼<br/>4. 充分的整合測試 |
@@ -1534,9 +1534,9 @@ Smart-Lock_AI_Support_Service_Dispatch_SaaS_Platform/
 | :--- | :--- | :--- | :--- |
 | `DATABASE_URL` | PostgreSQL 連線字串 | `postgresql+asyncpg://user:pass@postgres:5432/smartlock` | 是 |
 | `REDIS_URL` | Redis 連線字串 | `redis://redis:6379/0` | 是 |
-| `OPENAI_API_KEY` | OpenAI API 金鑰 | `sk-...` | 是 |
-| `OPENAI_MODEL` | LLM 模型名稱 | `gpt-4o` | 是 |
-| `OPENAI_EMBEDDING_MODEL` | Embedding 模型名稱 | `text-embedding-3-small` | 是 |
+| `GOOGLE_API_KEY` | Google AI API 金鑰 | `AIza...` | 是 |
+| `GOOGLE_MODEL` | LLM 模型名稱 | `gemini-3-pro` | 是 |
+| `GOOGLE_EMBEDDING_MODEL` | Embedding 模型名稱 | `text-embedding-004` | 是 |
 | `LINE_CHANNEL_SECRET` | LINE Channel Secret | `abc123...` | 是 |
 | `LINE_CHANNEL_ACCESS_TOKEN` | LINE Channel Access Token | `xyz789...` | 是 |
 | `JWT_SECRET` | JWT 簽名密鑰 | `super-secret-key` | 是 |

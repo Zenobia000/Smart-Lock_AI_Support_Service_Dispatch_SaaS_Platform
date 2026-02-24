@@ -191,7 +191,7 @@ backend/src/smart_lock/
 │   │                                   #   - Settings class (Pydantic BaseSettings)
 │   │                                   #   - Database URL, Redis URL
 │   │                                   #   - LINE Channel Secret/Token
-│   │                                   #   - OpenAI API Key, model name
+│   │                                   #   - Google API Key, model name
 │   │                                   #   - 各環境參數 (dev/staging/prod)
 │   ├── security.py                     # 安全模組
 │   │                                   #   - JWT token 生成與驗證
@@ -202,7 +202,7 @@ backend/src/smart_lock/
 │   │                                   #   - get_db_session() -> AsyncSession
 │   │                                   #   - get_redis_client() -> Redis
 │   │                                   #   - get_current_user() -> AdminUser
-│   │                                   #   - get_openai_client() -> AsyncOpenAI
+│   │                                   #   - get_google_genai_client() -> AsyncGoogleGenAI
 │   │                                   #   - get_line_client() -> LineBotApi
 │   ├── exceptions.py                   # 全域例外定義
 │   │                                   #   - AppException (base)
@@ -522,7 +522,7 @@ backend/src/smart_lock/
 │   │   │                               #     - send_flex_message() (問題卡/報價呈現)
 │   │   │                               #     - send_quick_reply()
 │   │   │                               #     - get_user_profile()
-│   │   ├── openai_client.py            #   OpenAI API 封裝
+│   │   ├── google_genai_client.py      #   Google AI API 封裝
 │   │   │                               #     - chat_completion() (async)
 │   │   │                               #     - create_embedding() (async)
 │   │   │                               #     - content_moderation() (async)
@@ -620,7 +620,7 @@ class ResolveQueryUseCase:
 |------|------|--------------|
 | `web/routers/` | HTTP API 端點定義、請求/回應處理 | FastAPI |
 | `persistence/` | 資料庫存取、ORM 模型、遷移 | SQLAlchemy 2.0, asyncpg, pgvector |
-| `external/` | 第三方 API 客戶端 | LINE SDK, OpenAI SDK, LangChain |
+| `external/` | 第三方 API 客戶端 | LINE SDK, Google AI SDK, LangChain |
 | `cache/` | 快取與 session 管理 | Redis (aioredis) |
 
 ### 4.2 tests/ - 測試代碼
@@ -635,7 +635,7 @@ backend/tests/
 │                                       #   - async_session fixture (test DB)
 │                                       #   - redis_client fixture (test Redis)
 │                                       #   - test_client fixture (FastAPI TestClient)
-│                                       #   - mock_openai_client fixture
+│                                       #   - mock_google_genai_client fixture
 │                                       #   - mock_line_client fixture
 │                                       #   - sample_problem_card fixture
 ├── factories.py                        # 測試資料工廠（factory-boy）
@@ -675,7 +675,7 @@ backend/tests/
 │   │   ├── test_problem_card_repo.py
 │   │   └── test_work_order_repo.py         # V2.0
 │   ├── external/
-│   │   ├── test_openai_client.py       #   使用 mock/VCR cassettes
+│   │   ├── test_google_genai_client.py #   使用 mock/VCR cassettes
 │   │   └── test_line_client.py
 │   └── cache/
 │       └── test_session_store.py
@@ -1030,10 +1030,10 @@ SESSION_TTL_SECONDS=3600
 LINE_CHANNEL_SECRET=your-channel-secret
 LINE_CHANNEL_ACCESS_TOKEN=your-access-token
 
-# === OpenAI ===
-OPENAI_API_KEY=sk-your-api-key
-OPENAI_MODEL=gpt-4o
-OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+# === Google AI ===
+GOOGLE_API_KEY=your-api-key
+GOOGLE_MODEL=gemini-3-pro
+GOOGLE_EMBEDDING_MODEL=text-embedding-004
 
 # === Auth ===
 JWT_SECRET_KEY=your-jwt-secret
@@ -1246,7 +1246,7 @@ smart-lock-platform/                      smart-lock-platform/
 │  ┌─────────┐  ┌──────────┐  ┌─────────┐  ┌───────┐ │
 │  │ Routers │  │ Repos    │  │External │  │ Cache │ │
 │  │(FastAPI)│  │(SQLAlchm)│  │(LINE,   │  │(Redis)│ │
-│  │         │  │          │  │ OpenAI, │  │       │ │
+│  │         │  │          │  │ Google, │  │       │ │
 │  │         │  │          │  │ LangChn)│  │       │ │
 │  └────┬────┘  └────┬─────┘  └────┬────┘  └───┬───┘ │
 │       │            │             │            │      │

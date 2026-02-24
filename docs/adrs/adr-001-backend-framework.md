@@ -12,7 +12,7 @@
 
 1. **LINE Bot Webhook Server** — 接收 LINE Messaging API 的 Webhook 事件（文字訊息、圖片、Postback），需要快速回應以避免 LINE 平台的 timeout 重試機制（LINE 要求 Webhook 在 1 秒內回應 HTTP 200）。
 2. **REST API for Admin Panel** — 提供管理後台所需的 CRUD API，包括案件管理、技師管理、知識庫管理、報表查詢等。
-3. **非同步 LLM 呼叫** — 三層 AI 解析引擎（案例庫向量搜尋 -> PDF RAG -> 人工轉接）中，每次 LLM 推論呼叫（OpenAI GPT-4o）耗時約 2-10 秒，必須以非同步方式處理，避免阻塞其他請求。
+3. **非同步 LLM 呼叫** — 三層 AI 解析引擎（案例庫向量搜尋 -> PDF RAG -> 人工轉接）中，每次 LLM 推論呼叫（Google Gemini 3 Pro）耗時約 2-10 秒，必須以非同步方式處理，避免阻塞其他請求。
 4. **技師派工 API** — 類 Uber 派工匹配引擎需要即時推播與狀態更新，對 API 延遲敏感。
 5. **自動化對帳 API** — 標準化報價引擎與對帳系統需要嚴格的資料驗證。
 
@@ -79,7 +79,7 @@
 - **高並發處理能力：** 單一 Uvicorn worker 即可處理大量並發請求（相較 Flask 的同步模型，在 I/O 密集場景下吞吐量提升數倍）。
 - **ProblemCard 資料完整性：** Pydantic model 強制校驗 ProblemCard 的每個欄位（鎖型、故障症狀、錯誤代碼等），在 API 邊界就攔截不合法資料。
 - **API 文件自動化：** 前端團隊（V2.0 管理後台、技師工作台）可直接使用自動生成的 Swagger UI 進行開發與測試。
-- **Dependency Injection 管理資源：** DB session pool、OpenAI client、Redis connection 等共享資源透過 FastAPI 的 `Depends()` 機制統一管理，避免資源洩漏。
+- **Dependency Injection 管理資源：** DB session pool、Google AI client、Redis connection 等共享資源透過 FastAPI 的 `Depends()` 機制統一管理，避免資源洩漏。
 
 ### 負面影響與風險
 

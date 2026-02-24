@@ -73,7 +73,7 @@
 
 ### 選項三: 自行實作（Custom Implementation）
 
-- **概述：** 直接使用 OpenAI Python SDK，自行建構 pipeline 邏輯。
+- **概述：** 直接使用 Google AI Python SDK，自行建構 pipeline 邏輯。
 - **優點：**
   - 完全掌控，無框架黑盒問題。
   - 最輕量，無額外依賴。
@@ -81,7 +81,7 @@
 - **缺點：**
   - **開發成本高：** 需要自行實作 prompt template 管理、output parsing、retry/fallback、document chunking、vector store 整合、memory management 等基礎設施，估計增加 2-3 週開發時間。
   - **重複造輪子：** 上述功能都是已被 LangChain 驗證過的通用需求。
-  - **維護負擔：** 隨著 OpenAI API 更新（模型版本、API 格式），需自行維護相容層。
+  - **維護負擔：** 隨著 Google AI API 更新（模型版本、API 格式），需自行維護相容層。
   - **缺乏可觀測性工具：** 需自行建構 LLM 呼叫追蹤與成本監控。
 
 ## 3. 決策
@@ -90,10 +90,10 @@
 
 技術規格：
 - **LangChain 版本：** 0.3.x（最新穩定版，基於 Pydantic v2）
-- **LLM Provider：** OpenAI GPT-4o（透過 `langchain-openai` 套件）
+- **LLM Provider：** Google Gemini 3 Pro（透過 `langchain-google-genai` 套件）
 - **Vector Store 整合：** `langchain-postgres`（PGVector 整合）
 - **可觀測性：** LangSmith（開發/測試環境啟用，生產環境選擇性啟用）
-- **Embedding Model：** OpenAI `text-embedding-3-small`（1536 維）
+- **Embedding Model：** Google `text-embedding-004`（768 維）
 
 ### 關鍵設計原則
 
@@ -101,7 +101,7 @@
 
 1. **核心業務邏輯不綁定 LangChain：** ProblemCard 的狀態管理、派工匹配邏輯、報價計算等核心業務邏輯以純 Python 實作，不使用 LangChain 抽象。
 2. **LangChain 僅用於 AI pipeline 編排：** 意圖識別 Chain、資訊萃取 Chain、RAG Chain、SOP 生成 Chain 等使用 LangChain，但各 Chain 的輸入輸出介面以 Pydantic model 定義，確保可替換性。
-3. **預留 escape hatch：** 每個 Chain 旁邊保留直接呼叫 OpenAI SDK 的 fallback 路徑，若 LangChain 某個抽象成為瓶頸，可快速切換。
+3. **預留 escape hatch：** 每個 Chain 旁邊保留直接呼叫 Google AI SDK 的 fallback 路徑，若 LangChain 某個抽象成為瓶頸，可快速切換。
 
 ## 4. 決策的後果與影響
 
@@ -136,14 +136,14 @@
 | 框架 breaking change | 鎖定 LangChain 主版本號（`langchain>=0.3,<0.4`），設定 Dependabot 監控 |
 | 過度使用框架抽象 | Code review 規範：非 AI pipeline 的業務邏輯禁止使用 LangChain 類別 |
 | 除錯困難 | 啟用 LangSmith tracing；在每個 Chain 的輸入輸出加入 structured logging |
-| Docker image 膨脹 | 使用 multi-stage build；僅安裝必要的 langchain 子套件（`langchain-core`, `langchain-openai`, `langchain-postgres`） |
+| Docker image 膨脹 | 使用 multi-stage build；僅安裝必要的 langchain 子套件（`langchain-core`, `langchain-google-genai`, `langchain-postgres`） |
 
 ## 5. 執行計畫概要
 
 1. **依賴安裝：** 使用 Poetry 安裝核心套件：
    ```
    langchain-core >= 0.3
-   langchain-openai >= 0.3
+   langchain-google-genai >= 2.0
    langchain-postgres >= 0.0.12
    langchain-community >= 0.3 (Document Loaders)
    langsmith >= 0.1
@@ -180,7 +180,7 @@
 - [LangChain Expression Language (LCEL)](https://python.langchain.com/docs/concepts/lcel/)
 - [LangSmith 文件](https://docs.smith.langchain.com/)
 - [langchain-postgres](https://github.com/langchain-ai/langchain-postgres)
-- [OpenAI GPT-4o](https://platform.openai.com/docs/models/gpt-4o)
+- [Google Gemini 3 Pro](https://ai.google.dev/gemini-api/docs)
 - ADR-001: 後端框架選型（FastAPI）
 - ADR-002: 資料庫選型（PostgreSQL + pgvector）
 - ADR-004: LINE Bot 對話架構設計

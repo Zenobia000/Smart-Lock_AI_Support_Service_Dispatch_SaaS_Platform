@@ -341,9 +341,9 @@ V2.0 技師派工與帳務平台 (W18-W31, 共 14 週)
 | 編號 | 依賴項目 | 提供者 | 用途 | 風險等級 |
 | :--- | :--- | :--- | :--- | :--- |
 | D-001 | LINE Messaging API | LINE Corporation | 消費者對話管道、Webhook 接收訊息、發送回覆 | 低 - 成熟穩定的服務 |
-| D-002 | OpenAI GPT-4o API | OpenAI | 意圖辨識、對話生成、SOP 生成、ProblemCard 擷取 | 中 - 需監控 API 配額與成本 |
-| D-003 | OpenAI Embeddings API | OpenAI | 文本向量化 (案例庫、產品手冊 chunks) | 中 - 與 D-002 相同風險 |
-| D-004 | OpenAI Vision API | OpenAI | 圖片分析 (故障照片辨識) | 中 - 與 D-002 相同風險 |
+| D-002 | Google Gemini 3 Pro API | Google | 意圖辨識、對話生成、SOP 生成、ProblemCard 擷取 | 中 - 需監控 API 配額與成本 |
+| D-003 | Google Embeddings API | Google | 文本向量化 (案例庫、產品手冊 chunks) | 中 - 與 D-002 相同風險 |
+| D-004 | Google Gemini Vision API | Google | 圖片分析 (故障照片辨識) | 中 - 與 D-002 相同風險 |
 | D-005 | Google Maps API | Google | V2.0 地圖視覺化、距離計算 | 低 - 成熟穩定的服務 |
 
 #### 技術約束 (Technical Constraints)
@@ -351,7 +351,7 @@ V2.0 技師派工與帳務平台 (W18-W31, 共 14 週)
 | 編號 | 約束描述 | 原因 |
 | :--- | :--- | :--- |
 | T-001 | LINE Messaging API 作為主要客戶對話管道 | 甲方需求，消費者不需安裝額外 App |
-| T-002 | OpenAI GPT-4o 作為 LLM | 中文理解能力最佳，Vision 能力成熟 |
+| T-002 | Google Gemini 3 Pro 作為 LLM | 中文理解能力最佳，Vision 能力成熟 |
 | T-003 | PostgreSQL 作為主要關聯式資料庫 | 開源、成熟、支援 JSON 欄位 |
 | T-004 | 向量資料庫用於案例/手冊語義搜尋 | 核心功能需求 (pgvector 或 Qdrant 待 ADR 決定) |
 | T-005 | Docker 容器化部署 | 環境一致性、可移植性 |
@@ -367,7 +367,7 @@ V2.0 技師派工與帳務平台 (W18-W31, 共 14 週)
 | 決策 ID | 描述 | 決定結果 | 日期 | 負責人 | ADR 連結 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | D-001 | 主要資料庫選型 | PostgreSQL | 2026-02-17 | Tech Lead | [ADR-001] |
-| D-002 | LLM 選型 | OpenAI GPT-4o | 2026-02-17 | Tech Lead | [ADR-002] |
+| D-002 | LLM 選型 | Google Gemini 3 Pro | 2026-02-17 | Tech Lead | [ADR-002] |
 | D-003 | 消費者端通訊管道 | LINE Messaging API | 2026-02-17 | PM / 甲方 | [ADR-003] |
 | D-004 | 後端框架 | FastAPI (Python) | 2026-02-17 | Tech Lead | [ADR-004] |
 | D-005 | 部署方式 | Docker 容器化 | 2026-02-17 | Tech Lead | [ADR-005] |
@@ -391,7 +391,7 @@ V2.0 技師派工與帳務平台 (W18-W31, 共 14 週)
 
 | 風險 ID | 描述 | 可能性 | 影響 | 緩解策略 |
 | :--- | :--- | :--- | :--- | :--- |
-| R-001 | OpenAI API 費用超出預算 | 中 | 高 | 設定 API 呼叫速率限制與月度費用上限；快取重複問題的回答；使用 Embedding 快取 |
+| R-001 | Google AI API 費用超出預算 | 中 | 高 | 設定 API 呼叫速率限制與月度費用上限；快取重複問題的回答；使用 Embedding 快取 |
 | R-002 | 甲方提供的歷史案例數量不足或品質不佳 | 中 | 高 | W1 確認資料量與品質；不足時優先使用產品手冊 RAG 補足；降低案例庫搜尋的信心閾值 |
 | R-003 | AI 幻覺 (Hallucination) 導致錯誤的維修建議 | 中 | 高 | Output Guardrail 限制回覆範圍；不確定時引導轉人工；回覆中標註信心程度 |
 | R-004 | LINE Messaging API 的訊息格式限制影響 UX 設計 | 低 | 中 | 充分研究 LINE Flex Message 能力；必要時使用 LIFF 擴展 |

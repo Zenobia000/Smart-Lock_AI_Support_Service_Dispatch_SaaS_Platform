@@ -46,7 +46,7 @@ LINE Bot 是本平台面對終端使用者的主要通道。使用者透過 LINE
   - 無對話超時問題。
 - **缺點：**
   - **ProblemCard 累積困難：** 每次都需要從完整對話歷史重新解析 ProblemCard 欄位，LLM token 消耗隨對話輪次線性增長，15 輪對話的最後一輪需要處理前 14 輪的完整歷史。
-  - **LLM 成本爆炸：** GPT-4o 的 input token 成本隨對話長度快速增加。
+  - **LLM 成本爆炸：** Gemini 3 Pro 的 input token 成本隨對話長度快速增加。
   - **對話歷史查詢：** 需要從 PostgreSQL 查詢完整歷史後組裝，在 LINE Webhook 的 1 秒限制內可能來不及。
   - **結構化狀態丟失：** 無法在 server 端追蹤「ProblemCard 目前已蒐集了哪些欄位、還缺哪些」的結構化狀態。
 
@@ -184,7 +184,7 @@ LINE Webhook Event (HTTP POST)
 [暫存圖片] -- 儲存至本地暫存目錄或 S3
     |
     v
-[GPT-4o Vision API] -- 傳送圖片進行分析
+[Gemini 3 Pro Vision API] -- 傳送圖片進行分析
     |                    (辨識錯誤代碼、電子鎖型號、故障外觀)
     v
 [更新 ProblemCard] -- 將 Vision 分析結果填入對應欄位

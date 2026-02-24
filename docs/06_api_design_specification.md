@@ -1391,7 +1391,7 @@ curl -X GET "https://api.smartlock-saas.com/api/v1/dashboard/stats?period=30d" \
     "chunk_overlap": 50
   },
   "llm": {
-    "model": "gpt-4o",
+    "model": "gemini-3-pro",
     "temperature": 0.3,
     "max_tokens": 1024,
     "system_prompt_version": "v2.1"

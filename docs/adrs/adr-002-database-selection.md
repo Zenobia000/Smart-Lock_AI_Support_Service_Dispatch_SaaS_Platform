@@ -20,7 +20,7 @@
 
 ### 向量相似度搜尋資料
 
-- **案例庫 Embedding：** 歷史案例的向量表示（維度約 1536，使用 OpenAI `text-embedding-3-small`），用於三層 AI 解析引擎的第一層「案例庫向量搜尋」。
+- **案例庫 Embedding：** 歷史案例的向量表示（維度約 1536，使用 Google `text-embedding-004`），用於三層 AI 解析引擎的第一層「案例庫向量搜尋」。
 - **PDF 手冊 Embedding：** 電子鎖安裝手冊、維修手冊的分段向量化，用於第二層 RAG 檢索。
 - **SOP Embedding：** 自動生成的 SOP 文件向量化，用於知識庫自進化搜尋。
 - **相似度門檻：** 業務需求設定 RAG 相似度閾值 >= 0.75，低於此值轉入下一層處理。
@@ -78,7 +78,7 @@
 技術規格：
 - **PostgreSQL 版本：** 16.x
 - **pgvector 版本：** 0.7+（支援 HNSW 索引與 halfvec）
-- **Embedding 維度：** 1536（OpenAI `text-embedding-3-small`）
+- **Embedding 維度：** 1536（Google `text-embedding-004`）
 - **索引策略：** HNSW（`lists` 參數根據資料量動態調整）
 - **距離函數：** Cosine similarity（`vector_cosine_ops`）
 - **Python Driver：** asyncpg（搭配 SQLAlchemy 2.0 async）
@@ -142,6 +142,6 @@
 - [pgvector-python](https://github.com/pgvector/pgvector-python)
 - [PostgreSQL 16 Documentation](https://www.postgresql.org/docs/16/)
 - [HNSW 索引原理](https://arxiv.org/abs/1603.09320)
-- [OpenAI Embeddings Guide](https://platform.openai.com/docs/guides/embeddings)
+- [Google AI Embeddings Guide](https://ai.google.dev/gemini-api/docs/embeddings)
 - ADR-001: 後端框架選型（FastAPI）
 - ADR-003: LLM 整合框架選型（LangChain）
