@@ -1,0 +1,204 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#4A90D9', 'primaryTextColor': '#000', 'primaryBorderColor': '#2E6CB5', 'lineColor': '#333333', 'secondaryColor': '#E8F5E9', 'tertiaryColor': '#FFF3E0'}}}%%
+
+graph TD
+    LINE_USER(("LINE 使用者"))
+
+    subgraph debounce_layer ["防抖層（app.py）"]
+        direction TB
+        webhook["webhook<br/><small>接收 LINE 訊息<br/>顯示 Loading 動畫<br/>記錄 user_raw 審計日誌</small>"]
+        buffer["訊息緩衝池<br/><small>累積多則訊息<br/>新訊息重設計時器<br/>buffer_wait 秒後送出</small>"]
+        langgraph_reply["langgraph_and_reply<br/><small>記錄 user + ai 審計日誌</small>"]
+        webhook --> buffer
+        buffer --> langgraph_reply
+    end
+
+    subgraph supervisor_graph ["Supervisor Graph（LangGraph + SQLite Checkpointer）"]
+        pre_process["pre_process<br/><small>載入 user profile<br/>注入 [前情提要] 摘要<br/>組裝 messages</small>"]
+        manage_memory["manage_memory<br/><small>語意摘要壓縮<br/>messages > 閾值時觸發<br/>LLM 壓縮舊訊息</small>"]
+        router["router<br/><small>LLM 意圖分類<br/>支援多意圖<br/>→ next_agents</small>"]
+        merge_answers["merge_answers<br/><small>提取 answer<br/>多 agent 時 LLM 合併<br/>話題偵測</small>"]
+        update_profile["update_profile<br/><small>LLM 萃取個資<br/>更新 user profile</small>"]
+        post_process["post_process<br/><small>Markdown 清洗<br/>記錄 chat_history<br/>回傳最終 answer</small>"]
+        out_of_domain["out_of_domain<br/><small>LLM 禮貌拒絕<br/>非業務問題</small>"]
+        human["transfer_human<br/><small>轉接真人客服<br/>帶入已知個資</small>"]
+    end
+
+    subgraph agents_layer ["Agent 子圖（Send fan-out 平行派發）"]
+        subgraph product_expert_sub ["product_expert"]
+            direction LR
+            PE_LLM["agent_llm"]
+            PE_TOOL["tool_node"]
+            PE_LLM -->|tool_calls| PE_TOOL
+            PE_TOOL -->|tool results| PE_LLM
+        end
+
+        subgraph troubleshooter_sub ["troubleshooter"]
+            direction LR
+            TS_LLM["agent_llm"]
+            TS_TOOL["tool_node"]
+            TS_LLM -->|tool_calls| TS_TOOL
+            TS_TOOL -->|tool results| TS_LLM
+        end
+
+        subgraph order_clerk_sub ["order_clerk"]
+            direction LR
+            OC_LLM["agent_llm"]
+            OC_TOOL["tool_node"]
+            OC_LLM -->|tool_calls| OC_TOOL
+            OC_TOOL -->|tool results| OC_LLM
+        end
+
+        subgraph web_researcher_sub ["web_researcher"]
+            direction LR
+            WR_LLM["agent_llm"]
+            WR_TOOL["tool_node"]
+            WR_LLM -->|tool_calls| WR_TOOL
+            WR_TOOL -->|tool results| WR_LLM
+        end
+    end
+
+    subgraph prompts_store ["System Prompts"]
+        direction LR
+        prompt_router[("router.md<br/><small>意圖分類器</small>")]
+        prompt_pe[("product_expert.md<br/><small>產品規格專家</small>")]
+        prompt_ts[("troubleshooter.md<br/><small>故障排除專家</small>")]
+        prompt_oc[("order_clerk.md<br/><small>訂單查詢專員</small>")]
+        prompt_wr[("web_researcher.md<br/><small>網路搜尋助手</small>")]
+        prompt_merge[("merge_answers.md<br/><small>多回覆合併</small>")]
+        prompt_profile[("update_profile.md<br/><small>輪廓更新</small>")]
+        prompt_summarize[("summarize_messages.md<br/><small>語意摘要壓縮</small>")]
+        prompt_transfer[("transfer_human_form.md<br/><small>轉接真人表單</small>")]
+    end
+
+    subgraph tools_store ["Tools"]
+        direction LR
+        tool_manual[("db_smartlock_manual<br/><small>智能門鎖規格、設定與保固手冊</small>")]
+        tool_trouble[("db_troubleshooting<br/><small>常見故障排除與維修指南</small>")]
+        tool_order[("db_order_api<br/><small>查詢即時訂單狀態與報修進度</small>")]
+        tool_web[("db_web_search<br/><small>網際網路搜尋引擎</small>")]
+        tool_transfer[("transfer_to_human<br/><small>轉接真人客服</small>")]
+    end
+
+    subgraph data_stores ["外部資料源"]
+        direction LR
+        chroma_manual[("Chroma DB<br/><small>產品手冊</small>")]
+        chroma_trouble[("Chroma DB<br/><small>故障排除</small>")]
+        order_api[("Order API<br/><small>訂單 / 維修單</small>")]
+        duckduckgo[("DuckDuckGo<br/><small>網頁搜尋</small>")]
+    end
+
+    subgraph persistence ["持久化儲存"]
+        direction LR
+        profile_store[("User Profiles<br/><small>./data/profiles/*.md</small>")]
+        sqlite_store[("SQLite<br/><small>./data/db/chat_history.db<br/>Checkpointer + 對話記憶</small>")]
+        audit_store[("SQLite<br/><small>./data/db/audit_log.db<br/>審計日誌</small>")]
+    end
+
+    LLM_ENGINE["LLM Engine<br/><small>Gemini / Vertex AI / Ollama<br/>config.toml [llm]</small>"]
+    EMBEDDING_ENGINE["Embedding Engine<br/><small>Ollama nomic-embed-text<br/>config.toml [embedding]</small>"]
+
+    %% LINE → Debounce → LangGraph
+    LINE_USER -->|"傳送訊息"| webhook
+    langgraph_reply -->|"合併訊息"| pre_process
+
+    %% Main flow
+    pre_process --> manage_memory
+    manage_memory --> router
+
+    %% Router conditional edges (Send() fan-out，多意圖可平行派發)
+    router -->|"general_knowledge"| product_expert_sub
+    router -->|"troubleshooting"| troubleshooter_sub
+    router -->|"order_status"| order_clerk_sub
+    router -->|"web_search"| web_researcher_sub
+    router -->|"out_of_domain"| out_of_domain
+    router -->|"transfer_human<br/><small>僅使用者明確堅持</small>"| human
+
+    %% Agent → merge_answers
+    product_expert_sub --> merge_answers
+    troubleshooter_sub --> merge_answers
+    order_clerk_sub --> merge_answers
+    web_researcher_sub --> merge_answers
+
+    %% Terminal edges
+    out_of_domain --> merge_answers
+    human --> merge_answers
+    merge_answers --> update_profile
+    update_profile --> post_process
+    post_process -->|"answer"| langgraph_reply
+    langgraph_reply -->|"Reply / Push API"| LINE_USER
+
+    %% Prompt → node connections
+    prompt_transfer --- human
+    prompt_summarize --- manage_memory
+    prompt_router --- router
+    prompt_pe --- PE_LLM
+    prompt_ts --- TS_LLM
+    prompt_oc --- OC_LLM
+    prompt_wr --- WR_LLM
+    prompt_merge --- merge_answers
+    prompt_profile --- update_profile
+
+    %% Tool → tool_node connections
+    tool_manual --- PE_TOOL
+    tool_transfer --- PE_TOOL
+    tool_trouble --- TS_TOOL
+    tool_transfer --- TS_TOOL
+    tool_order --- OC_TOOL
+    tool_transfer --- OC_TOOL
+    tool_web --- WR_TOOL
+    tool_transfer --- WR_TOOL
+
+    %% Tool → Data Store connections
+    tool_manual --- chroma_manual
+    tool_trouble --- chroma_trouble
+    tool_order --- order_api
+    tool_web --- duckduckgo
+
+    %% Persistence connections
+    pre_process -.->|"載入"| profile_store
+    update_profile -.->|"儲存"| profile_store
+    manage_memory -.->|"讀寫摘要"| sqlite_store
+    webhook -.->|"user_raw"| audit_store
+    langgraph_reply -.->|"user + ai"| audit_store
+
+    %% Embedding connections
+    EMBEDDING_ENGINE -..- chroma_manual
+    EMBEDDING_ENGINE -..- chroma_trouble
+
+    %% LLM connections
+    LLM_ENGINE -..- manage_memory
+    LLM_ENGINE -..- router
+    LLM_ENGINE -..- PE_LLM
+    LLM_ENGINE -..- TS_LLM
+    LLM_ENGINE -..- OC_LLM
+    LLM_ENGINE -..- WR_LLM
+    LLM_ENGINE -..- merge_answers
+    LLM_ENGINE -..- update_profile
+
+    %% Styling
+    classDef userNode fill:#A5D6A7,stroke:#388E3C,color:#000,stroke-width:2px
+    classDef debounce fill:#FFE0B2,stroke:#F57C00,color:#000,stroke-width:1px
+    classDef process fill:#BBDEFB,stroke:#1976D2,color:#000,stroke-width:1px
+    classDef router_style fill:#FFCC80,stroke:#EF6C00,color:#000,stroke-width:2px
+    classDef special fill:#FFCDD2,stroke:#D32F2F,color:#000,stroke-width:1px
+    classDef agent_llm fill:#C8E6C9,stroke:#43A047,color:#000,stroke-width:1px
+    classDef agent_tool fill:#B2DFDB,stroke:#00897B,color:#000,stroke-width:1px
+    classDef datastore fill:#D7CCC8,stroke:#5D4037,color:#000,stroke-width:1px
+    classDef persist fill:#CFD8DC,stroke:#455A64,color:#000,stroke-width:1px
+    classDef llm_style fill:#90CAF9,stroke:#1565C0,color:#000,stroke-width:2px
+    classDef prompt_style fill:#E1BEE7,stroke:#7B1FA2,color:#000,stroke-width:1px
+    classDef tool_style fill:#B2EBF2,stroke:#0097A7,color:#000,stroke-width:1px
+
+    class LINE_USER userNode
+    class webhook,buffer debounce
+    class pre_process,manage_memory,merge_answers,update_profile,post_process process
+    class router router_style
+    class out_of_domain,human special
+    class PE_LLM,TS_LLM,OC_LLM,WR_LLM agent_llm
+    class PE_TOOL,TS_TOOL,OC_TOOL,WR_TOOL agent_tool
+    class chroma_manual,chroma_trouble,order_api,duckduckgo datastore
+    class profile_store,sqlite_store,audit_store persist
+    class LLM_ENGINE,EMBEDDING_ENGINE llm_style
+    class prompt_router,prompt_pe,prompt_ts,prompt_oc,prompt_wr,prompt_merge,prompt_profile,prompt_summarize,prompt_transfer prompt_style
+    class langgraph_reply debounce
+    class tool_manual,tool_trouble,tool_order,tool_web,tool_transfer tool_style

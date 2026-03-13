@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# 虛擬環境
+venv/
+.venv/
+env/
+
+# 環境變數與機密
+.env
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ChromaDB 向量資料庫（可由 scripts/seed_db.py 重建）
+data/db/chroma_db_default/
+data/db/chroma_db_troubleshoot/
+
+# SQLite 對話記憶（執行時動態產生）
+data/db/chat_history.db
+data/db/chat_history.db-shm
+data/db/chat_history.db-wal
+
+# 使用者輪廓（執行時動態產生）
+data/profiles/
+
+# 測試執行輸出
+result.txt
+
+# Jupyter
+.ipynb_checkpoints/

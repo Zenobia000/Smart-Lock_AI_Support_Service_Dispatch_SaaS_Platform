@@ -1,0 +1,268 @@
+# ==========================================
+# 客服系統 - 核心設定檔 (config.toml)
+# ==========================================
+# 說明：
+# 1. 本檔案定義系統所有可配置的行為，共 14 個區塊。
+# 2. 帶有資安機密性質的資料，請寫在對應的 `_env` 變數中，並由 .env 檔案提供。
+# 3. 若不需要某個功能，將該區塊全數加上 # 註解即可。
+#
+# 區塊索引：
+#   1. [system]          — 系統全局設定
+#   2. [debounce]        — 訊息緩衝設定
+#   3. [line_bot]        — LINE Bot 設定
+#   4. [templates]       — 系統回覆範本
+#   5. [llm]             — 語言模型設定
+#   6. [embedding]        — 向量模型設定
+#   7. [[databases]]     — 檢索工具定義（順序 = 優先級）
+#   8. [[agents]]        — Agent 定義
+#   9. [[intents]]       — 意圖路由設定
+#  10. [memory]          — 對話記憶與摘要壓縮
+#  11. [required_slots]  — 必填資訊收集
+#  12. [user_profile]    — 使用者輪廓記憶
+#  13. [storage]         — 審計日誌儲存
+#  14. [prompts]         — Prompt 檔案路徑
+# ==========================================
+
+
+# ==========================================
+# 1. 系統全局設定
+# ==========================================
+[system]
+domain          = "電子鎖、智慧門鎖相關的產品、安裝、故障排除與售後服務"
+thread_prefix   = "smart_lock_"    # LangGraph thread ID 前綴
+request_timeout = 60               # LangGraph 執行超時秒數
+
+
+# ==========================================
+# 2. 訊息緩衝設定 (Debounce)
+# ==========================================
+[debounce]
+buffer_wait       = 5.0   # 最後一則訊息後等待秒數，新訊息會重設計時器
+buffer_ttl        = 300   # 緩衝區存活秒數，超過則強制清理
+cleanup_interval  = 60    # 清理過期緩衝區的間隔秒數
+
+
+# ==========================================
+# 3. LINE Bot 系統設定
+# ==========================================
+[line_bot]
+loading_animation_time = 60   # Loading 動畫顯示時間（秒，必須是 5 的倍數，範圍 5~60）
+
+
+# ==========================================
+# 4. 系統回覆罐頭訊息範本 (Templates)
+# ==========================================
+[templates]
+push_fallback_prefix = "【系統通知】讓您久等了，以下是您的回覆：\n"   # Reply Token 過期時，Push API 的訊息前綴
+error_timeout        = "不好意思，系統處理時間過長，請稍後再試一次。如果問題持續，建議轉接真人客服。"
+error_system         = "不好意思，系統大腦剛剛稍微當機了一下，請稍後再試一次！"
+error_no_reply       = "抱歉，系統沒有產生回覆。"
+
+
+# ==========================================
+# 5. 語言模型設定 (LLM)
+# ==========================================
+[llm]
+provider    = "vertexai"          # 支援: "ollama" | "gemini" | "vertexai"
+model_name  = "gemini-2.5-flash"  # Ollama: "gemma3:4b" / Gemini & Vertex AI: "gemini-2.5-flash"
+temperature = 0.3                 # 數值越低回答越保守穩定 (0.0 ~ 1.0)
+
+# Gemini 專用
+api_key_env = "GEMINI_API_KEY"    # .env 中的 API Key 變數名稱
+
+# Ollama 專用
+base_url     = "http://localhost:11434"
+base_url_env = "OLLAMA_BASE_URL"  # 優先讀取環境變數，若為空則使用上方 base_url
+
+# Vertex AI 專用（需先執行 gcloud auth application-default login）
+project_id_env = "VERTEX_PROJECT_ID"   # .env 中的 GCP 專案 ID
+location_env   = "VERTEX_LOCATION"     # .env 中的 GCP 區域（例: us-central1）
+
+
+# ==========================================
+# 6. 向量模型設定 (Embedding)
+# ==========================================
+[embedding]
+provider     = "ollama"              # 支援: "ollama"（未來可擴充 "openai" 等）
+model        = "nomic-embed-text"    # Embedding 模型名稱
+base_url     = "http://localhost:11434"
+base_url_env = "OLLAMA_BASE_URL"     # 優先讀取環境變數，若為空則使用上方 base_url
+
+
+# ==========================================
+# 7. 檢索工具定義 (Databases / Retrievers)
+#    陣列順序即為優先級，Agent 透過 tools 欄位引用
+# ==========================================
+
+[[databases]]
+name        = "db_smartlock_manual"
+type        = "chroma"
+description = "智能門鎖規格、設定與保固手冊"
+path        = "./data/db/chroma_db_default"
+top_k       = 3
+
+[[databases]]
+name        = "db_troubleshooting"
+type        = "chroma"
+description = "常見故障排除與維修指南"
+path        = "./data/db/chroma_db_troubleshoot"
+top_k       = 2
+
+[[databases]]
+name        = "db_order_api"
+type        = "api"
+description = "查詢即時訂單狀態與報修進度"
+
+endpoint     = "https://api.sunnie-lock.com/v1/status"   # 公開測試網址
+endpoint_env = "ORDER_API_URL"    # （優先）從 .env 讀取真實網址
+token_env    = "ORDER_API_TOKEN"  # （選用）Bearer Token
+method       = "GET"
+timeout      = 5
+
+query_param  = "keyword"    # 使用者問題放入的 query 參數（例: ?keyword=問題）
+response_key = "message"    # 從 JSON 回傳中擷取的欄位名稱
+
+[[databases]]
+name        = "db_web_search"
+type        = "web_search"
+description = "網際網路搜尋引擎"
+
+search_engine = "duckduckgo"   # 內建免費、免金鑰的搜尋引擎
+max_results   = 3
+
+
+# ==========================================
+# 8. Agent 定義 (Multi-Agent Architecture)
+#    每個 Agent 擁有獨立的 prompt 與工具集
+# ==========================================
+
+[[agents]]
+name        = "product_expert"
+label       = "產品規格專家"
+description = "負責回答產品規格、設定操作、保固相關問題"
+tools       = ["db_smartlock_manual", "transfer_to_human"]
+prompt_file = "agents/prompts/product_expert.md"
+
+[[agents]]
+name        = "troubleshooter"
+label       = "故障排除專家"
+description = "負責診斷設備故障、提供排除步驟"
+tools       = ["db_troubleshooting", "transfer_to_human"]
+prompt_file = "agents/prompts/troubleshooter.md"
+
+[[agents]]
+name        = "order_clerk"
+label       = "訂單查詢專員"
+description = "負責查詢訂單進度、出貨物流、維修進度"
+tools       = ["db_order_api", "transfer_to_human"]
+prompt_file = "agents/prompts/order_clerk.md"
+
+[[agents]]
+name        = "web_researcher"
+label       = "網路搜尋助手"
+description = "當內部資料庫不足時，負責搜尋網路資料"
+tools       = ["db_web_search", "transfer_to_human"]
+prompt_file = "agents/prompts/web_researcher.md"
+
+
+# ==========================================
+# 9. 意圖偵測路由設定 (Intent Routing)
+#    Router 用 LLM 分類後，依 target 派發至對應 Agent
+# ==========================================
+
+[[intents]]
+name          = "order_status"
+label         = "查詢訂單或維修進度"
+description   = "使用者想查詢訂單進度、出貨狀況、物流狀態或維修進度"
+target        = "order_clerk"
+require_slots = false
+
+[[intents]]
+name          = "troubleshooting"
+label         = "設備故障排除"
+description   = "使用者遇到設備故障、沒有反應、錯誤代碼或需要排除問題"
+target        = "troubleshooter"
+require_slots = true
+
+[[intents]]
+name          = "general_knowledge"
+label         = "產品規格與操作問題"
+description   = "關於產品規格、如何設定、一般操作問題，或是其他無法分類的問題"
+target        = "product_expert"
+require_slots = false
+
+[[intents]]
+name          = "web_search"
+label         = "網路搜尋"
+description   = "使用者詢問市場趨勢、產品比較、推薦等需要即時網路資訊的問題"
+target        = "web_researcher"
+require_slots = false
+
+[[intents]]
+name          = "out_of_domain"
+description   = "使用者的問題明顯與電子鎖、智慧門鎖完全無關，例如天氣、股票、美食推薦等"
+target        = "out_of_domain"
+require_slots = false
+
+[[intents]]
+name          = "transfer_human"
+label         = "轉接真人客服"
+description   = "使用者明確且堅持要求轉接真人客服（例如直接說『轉接真人』『我要找真人客服』）。僅在使用者主動要求時觸發，不要因為問題困難或資料不足就分類為此意圖。"
+target        = "human"
+require_slots = false
+
+
+# ==========================================
+# 10. 對話記憶儲存設定 (Memory / Checkpointer)
+#    manage_memory 節點負責語意摘要壓縮
+# ==========================================
+[memory]
+type                   = "sqlite"            # "memory"（暫存）| "sqlite"（本地持久化）| "postgres"（資料庫）
+sqlite_path            = "./data/db/chat_history.db"  # sqlite 專用，資料庫檔案路徑
+# postgres_uri_env     = "POSTGRES_URI"              # PostgreSQL 連線字串（未來擴充）
+max_messages_threshold = 10                   # messages 超過此數量時觸發語意摘要壓縮
+context_retention_pair = 2                    # 壓縮後保留最近幾對對話（1 對 = 1 human + 1 ai）
+
+
+# ==========================================
+# 11. 必填資訊收集 (Slot Filling)
+#     故障排除前，Agent 會主動詢問缺少的欄位
+# ==========================================
+[required_slots]
+device_model = "使用者的電子鎖型號。"
+device_brand = "使用者的電子鎖品牌。"
+
+
+# ==========================================
+# 12. 使用者輪廓記憶設定 (User Profile Memory)
+#     跨對話持久化使用者個人資訊
+# ==========================================
+[user_profile]
+enabled     = true
+profile_dir = "./data/profiles"
+
+[user_profile.extraction]
+phone_regex   = '09\d{2}[\-\s]?\d{3}[\-\s]?\d{3}'
+address_regex = '[\u4e00-\u9fff]*(?:市|縣)[\u4e00-\u9fff]*(?:區|鄉|鎮|市)[\u4e00-\u9fff\d\s\-]*(?:路|街|巷|弄|號|樓)[\u4e00-\u9fff\d\s\-]*'
+
+
+# ==========================================
+# 13. 審計日誌儲存設定 (Audit Log Storage)
+#     持久化原始對話紀錄（user + AI）
+# ==========================================
+[storage]
+type        = "sqlite"
+sqlite_path = "./data/db/audit_log.db"
+# postgres_uri_env = "POSTGRES_URI"
+
+
+# ==========================================
+# 14. Prompt 檔案路徑對照表
+#     集中管理所有 prompt 模板的路徑
+# ==========================================
+[prompts]
+router          = "agents/prompts/router.md"
+summarizer      = "agents/prompts/summarize_messages.md"
+merger          = "agents/prompts/merge_answers.md"
+profile_updater = "agents/prompts/update_profile.md"
+transfer_form   = "agents/prompts/transfer_human_form.md"
